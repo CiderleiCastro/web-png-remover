@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Removedor de Fundo de Imagens - Grátis e Automático</title>
+    <meta name="description" content="Remova o fundo de qualquer imagem online, de graça. Use nossas ferramentas automáticas e manuais para obter um recorte perfeito em segundos.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8fafc; /* Cinza muito claro */
+        }
+        .hero-gradient {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        }
+        .tool-btn {
+            @apply flex flex-col items-center justify-center w-20 h-20 rounded-lg transition-all duration-200;
+        }
+        .tool-btn.active {
+            @apply bg-blue-100 text-blue-700;
+        }
+        .tool-btn:not(.active) {
+            @apply text-gray-600 hover:bg-gray-100;
+        }
+        .header-button[disabled] {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        /* Efeito de destaque para o botão de upload */
+        #upload-box:hover {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        /* Estilo do canvas */
+        #canvas {
+            max-width: 100%;
+            max-height: 60vh;
+            object-fit: contain;
+        }
+        #canvas-container {
+             background-image:
+                linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
+                linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #e5e7eb 75%),
+                linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
+            background-size: 24px 24px;
+            background-position: 0 0, 0 12px, 12px -12px, -12px 0px;
+        }
+        #loader {
+            @apply w-12 h-12 border-4 border-gray-200 rounded-full;
+            border-top-color: #3b82f6;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .ad-placeholder {
+            @apply flex items-center justify-center text-sm text-gray-400 bg-gray-200 rounded-md;
+            min-height: 90px;
+        }
+    </style>
+</head>
+<body class="text-gray-900">
+
+    <!-- Cabeçalho -->
+    <header class="border-b bg-white/80 backdrop-blur-lg sticky top-0 z-20">
+        <nav class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <i class="material-icons text-blue-600 text-3xl">auto_fix_high</i>
+                <span class="text-xl font-bold">FundoMágico</span>
+            </div>
+            <a href="#como-funciona" class="text-gray-600 hover:text-blue-600">Como Funciona</a>
+        </nav>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-8">
+
+        <!-- Tela de Upload (Inicial) -->
+        <section id="upload-view">
+            <div class="text-center hero-gradient text-white rounded-2xl p-8 md:p-16 shadow-lg">
+                <h1 class="text-4xl md:text-5xl font-bold">Removedor de Fundo de Imagens</h1>
+                <p class="mt-4 text-lg text-blue-200 max-w-2xl mx-auto">Remova fundos de forma automática, grátis e com alta precisão em apenas um clique.</p>
+                <button id="upload-main-btn" class="mt-8 bg-white text-blue-700 font-bold py-4 px-8 rounded-full inline-flex items-center gap-2 transform hover:scale-105 transition-transform shadow-md">
+                    <i class="material-icons">upload_file</i>
+                    Carregar Imagem
+                </button>
+                <p class="mt-3 text-xs text-blue-300">Ou arraste e solte um arquivo aqui</p>
+                <input type="file" id="image-loader" class="hidden" accept="image/*">
+            </div>
+        </section>
+
+        <!-- Tela do Editor -->
+        <section id="editor-view" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                <!-- Coluna de Ferramentas -->
+                <div class="lg:col-span-1 bg-white p-6 rounded-2xl shadow-lg self-start">
+                    <h2 class="text-xl font-bold mb-4">Ferramentas</h2>
+                    
+                    <!-- Ações Principais -->
+                    <div class="grid grid-cols-2 gap-2 mb-6">
+                        <button id="undo-btn" class="header-button bg-gray-100 p-2 rounded-md flex items-center justify-center gap-1 hover:bg-gray-200"><i class="material-icons text-base">undo</i>Desfazer</button>
+                        <button id="redo-btn" class="header-button bg-gray-100 p-2 rounded-md flex items-center justify-center gap-1 hover:bg-gray-200"><i class="material-icons text-base">redo</i>Refazer</button>
+                    </div>
+
+                    <!-- Ferramentas de Edição -->
+                    <div class="space-y-4">
+                        <button id="autobg-tool" class="tool-btn w-full !flex-row justify-start gap-4 p-4 active">
+                            <i class="material-icons text-3xl">auto_awesome</i>
+                            <div>
+                                <h3 class="font-semibold">Fundo Mágico</h3>
+                                <p class="text-xs text-left">Remoção automática</p>
+                            </div>
+                        </button>
+                        <button id="eraser-tool" class="tool-btn w-full !flex-row justify-start gap-4 p-4">
+                            <i class="material-icons text-3xl">architecture</i>
+                             <div>
+                                <h3 class="font-semibold">Borracha</h3>
+                                <p class="text-xs text-left">Apagar manual</p>
+                            </div>
+                        </button>
+                         <button id="restore-tool" class="tool-btn w-full !flex-row justify-start gap-4 p-4">
+                            <i class="material-icons text-3xl">brush</i>
+                             <div>
+                                <h3 class="font-semibold">Restaurar</h3>
+                                <p class="text-xs text-left">Pintar original</p>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Opções da Ferramenta -->
+                    <div id="tool-options" class="mt-6 space-y-2">
+                        <label class="font-medium">Tamanho do Pincel:</label>
+                        <input id="brush-size" type="range" min="2" max="100" value="30" class="w-full">
+                    </div>
+                    
+                     <!-- Placeholder para Anúncio -->
+                    <div class="mt-8">
+                        <div class="ad-placeholder">Espaço para Anúncio (Vertical)</div>
+                    </div>
+                </div>
+
+                <!-- Coluna do Canvas -->
+                <div class="lg:col-span-3">
+                    <div id="canvas-container" class="bg-gray-100 rounded-2xl shadow-lg w-full min-h-[60vh] flex items-center justify-center p-4 relative">
+                        <canvas id="canvas"></canvas>
+                        <div id="loader-overlay" class="absolute inset-0 bg-white/80 backdrop-blur-sm flex-col items-center justify-center hidden">
+                            <div id="loader"></div>
+                            <p class="text-gray-700 mt-4 font-semibold">Processando Mágica...</p>
+                        </div>
+                    </div>
+                     <div class="mt-4 flex flex-col sm:flex-row gap-4">
+                        <button id="download-btn" class="w-full bg-blue-600 text-white font-bold py-4 px-8 rounded-xl inline-flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors shadow-lg">
+                           <i class="material-icons">download</i>
+                           Download em HD
+                        </button>
+                         <button id="new-image-btn" class="w-full bg-gray-200 text-gray-800 font-bold py-4 px-8 rounded-xl inline-flex items-center justify-center gap-2 hover:bg-gray-300 transition-colors">
+                           <i class="material-icons">add_photo_alternate</i>
+                           Nova Imagem
+                        </button>
+                     </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Seção "Como Funciona" -->
+        <section id="como-funciona" class="mt-16 bg-white p-8 md:p-12 rounded-2xl shadow-lg">
+            <h2 class="text-3xl font-bold text-center mb-8">Como Funciona em 3 Passos Simples</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                <div class="flex flex-col items-center">
+                    <div class="bg-blue-100 p-4 rounded-full mb-4"><i class="material-icons text-4xl text-blue-600">upload_file</i></div>
+                    <h3 class="text-xl font-semibold mb-2">1. Faça o Upload</h3>
+                    <p class="text-gray-600">Clique no botão para carregar sua imagem. Formatos como PNG e JPG são suportados.</p>
+                </div>
+                 <div class="flex flex-col items-center">
+                    <div class="bg-blue-100 p-4 rounded-full mb-4"><i class="material-icons text-4xl text-blue-600">auto_fix_high</i></div>
+                    <h3 class="text-xl font-semibold mb-2">2. Mágica Automática</h3>
+                    <p class="text-gray-600">Nossa IA remove o fundo da sua imagem instantaneamente. Use as ferramentas manuais para ajustes finos.</p>
+                </div>
+                 <div class="flex flex-col items-center">
+                    <div class="bg-blue-100 p-4 rounded-full mb-4"><i class="material-icons text-4xl text-blue-600">download</i></div>
+                    <h3 class="text-xl font-semibold mb-2">3. Baixe sua Imagem</h3>
+                    <p class="text-gray-600">Faça o download da sua nova imagem com fundo transparente em alta qualidade, pronta para usar!</p>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Placeholder para Anúncio -->
+        <div class="mt-16">
+            <div class="ad-placeholder">Espaço para Anúncio (Horizontal)</div>
+        </div>
+
+    </main>
+    
+    <footer class="text-center p-8 mt-8 border-t">
+        <p class="text-gray-500">&copy; 2024 FundoMágico. Todos os direitos reservados.</p>
+    </footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Vistas e UI
+    const uploadView = document.getElementById('upload-view');
+    const editorView = document.getElementById('editor-view');
+    const uploadMainBtn = document.getElementById('upload-main-btn');
+    const imageLoader = document.getElementById('image-loader');
+    const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
+    const canvasContainer = document.getElementById('canvas-container');
+    const loaderOverlay = document.getElementById('loader-overlay');
+
+    // Botões
+    const undoBtn = document.getElementById('undo-btn'), redoBtn = document.getElementById('redo-btn');
+    const autobgTool = document.getElementById('autobg-tool');
+    const eraserTool = document.getElementById('eraser-tool');
+    const restoreTool = document.getElementById('restore-tool');
+    const brushSizeSlider = document.getElementById('brush-size');
+    const downloadBtn = document.getElementById('download-btn');
+    const newImageBtn = document.getElementById('new-image-btn');
+    
+    // Estado da Aplicação
+    let image = new Image(), currentTool = 'autobg', isDrawing = false;
+    let historyStack = [], historyIndex = -1;
+    let originalImageData = null; 
+
+    // --- Lógica de Navegação e UI ---
+    const showEditor = () => { uploadView.classList.add('hidden'); editorView.classList.remove('hidden'); };
+    const showHome = () => { editorView.classList.add('hidden'); uploadView.classList.remove('hidden'); resetEditor(); };
+    const showLoader = (show) => { loaderOverlay.style.display = show ? 'flex' : 'none'; };
+
+    // --- Lógica de Histórico (Undo/Redo) ---
+    const updateHistoryButtons = () => { undoBtn.disabled = historyIndex <= 0; redoBtn.disabled = historyIndex >= historyStack.length - 1; };
+    const saveState = () => {
+        if (canvas.width === 0 || canvas.height === 0) return;
+        historyStack = historyStack.slice(0, historyIndex + 1);
+        historyStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+        historyIndex++;
+        updateHistoryButtons();
+    };
+    const undo = () => { if (historyIndex > 0) { historyIndex--; ctx.putImageData(historyStack[historyIndex], 0, 0); updateHistoryButtons(); } };
+    const redo = () => { if (historyIndex < historyStack.length - 1) { historyIndex++; ctx.putImageData(historyStack[historyIndex], 0, 0); updateHistoryButtons(); } };
+    
+    const resetEditor = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        image = new Image(); historyStack = []; historyIndex = -1;
+        originalImageData = null;
+        updateHistoryButtons(); activateTool('autobg');
+    };
+    
+    // --- Lógica de Carregamento e Desenho ---
+    const loadImage = (file) => {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            image.src = event.target.result;
+            image.onload = () => {
+                showEditor();
+                requestAnimationFrame(() => {
+                    drawImageOnCanvas();
+                    originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    saveState();
+                    autoRemoveBackground();
+                });
+            };
+        };
+        reader.readAsDataURL(file);
+        imageLoader.value = '';
+    };
+
+    const drawImageOnCanvas = () => {
+        const containerW = canvasContainer.clientWidth - 32; // padding
+        const containerH = canvasContainer.clientHeight - 32; // padding
+        const scale = Math.min(containerW / image.width, containerH / image.height, 1);
+        canvas.width = image.width * scale;
+        canvas.height = image.height * scale;
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    };
+
+    // --- Lógica das Ferramentas ---
+    const activateTool = (tool) => {
+        currentTool = tool;
+        [autobgTool, eraserTool, restoreTool].forEach(b => b.classList.remove('active'));
+        document.getElementById(`${tool}-tool`).classList.add('active');
+        if (tool === 'autobg') autoRemoveBackground();
+    };
+
+    const draw = (e) => {
+        if (!isDrawing) return;
+        const pos = getPos(e);
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, brushSizeSlider.value / 2, 0, Math.PI * 2, false);
+        ctx.fill();
+    };
+
+    // --- Funções das Ferramentas ---
+    const autoRemoveBackground = () => {
+        showLoader(true);
+        setTimeout(() => { // Simula processamento de IA
+            // Garante que estamos começando da imagem original para aplicar a máscara
+            ctx.putImageData(originalImageData, 0, 0);
+            
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            const width = canvas.width;
+            const height = canvas.height;
+            const tolerance = 40; // Ajuste esta tolerância conforme necessário
+
+            const visited = new Uint8Array(width * height);
+            const queue = [];
+
+            // Adiciona todos os pixels da borda à fila
+            for (let x = 0; x < width; x++) {
+                queue.push([x, 0]); visited[0 * width + x] = 1;
+                queue.push([x, height - 1]); visited[(height - 1) * width + x] = 1;
+            }
+            for (let y = 1; y < height - 1; y++) {
+                queue.push([0, y]); visited[y * width + 0] = 1;
+                queue.push([width - 1, y]); visited[(width - 1) * width + y] = 1;
+            }
+            
+            // Pega a cor do canto superior esquerdo como cor de referência
+            const startIdx = 0;
+            const startR = data[startIdx], startG = data[startIdx+1], startB = data[startIdx+2];
+
+            let head = 0;
+            while(head < queue.length) {
+                const [x, y] = queue[head++];
+                const idx = (y * width + x) * 4;
+
+                const r = data[idx], g = data[idx+1], b = data[idx+2];
+
+                // Compara a cor do pixel atual com a cor de referência
+                const distance = Math.sqrt(Math.pow(r - startR, 2) + Math.pow(g - startG, 2) + Math.pow(b - startB, 2));
+
+                if (distance < tolerance) {
+                    data[idx + 3] = 0; // Torna transparente
+
+                    // Adiciona vizinhos à fila
+                    const neighbors = [[x+1, y], [x-1, y], [x, y+1], [x, y-1]];
+                    for(const [nx, ny] of neighbors) {
+                        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                             const nIdx = ny * width + nx;
+                             if (!visited[nIdx]) {
+                                 visited[nIdx] = 1;
+                                 queue.push([nx, ny]);
+                             }
+                        }
+                    }
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+            saveState();
+            showLoader(false);
+        }, 500);
+    };
+
+    // --- Event Listeners ---
+    const getPos = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: clientX - rect.left, y: clientY - rect.top };
+    };
+
+    const startDrawing = (e) => {
+        if (currentTool === 'autobg') return; // Não desenha no modo automático
+        isDrawing = true;
+        
+        ctx.globalCompositeOperation = (currentTool === 'eraser') ? 'destination-out' : 'source-over';
+        
+        if (currentTool === 'restore') {
+            // Para restaurar, precisamos desenhar a imagem original onde o mouse passar
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            tempCtx.putImageData(originalImageData, 0, 0);
+
+            ctx.save();
+            ctx.beginPath();
+            const pos = getPos(e);
+            ctx.arc(pos.x, pos.y, brushSizeSlider.value / 2, 0, Math.PI * 2, false);
+            ctx.clip();
+            ctx.drawImage(tempCanvas, 0, 0);
+            ctx.restore();
+        } else {
+             draw(e);
+        }
+    };
+    const stopDrawing = () => { if (isDrawing) { isDrawing = false; if (currentTool !== 'autobg') saveState(); } };
+    
+    // Bindings
+    uploadMainBtn.addEventListener('click', () => imageLoader.click());
+    newImageBtn.addEventListener('click', () => { showHome(); });
+    imageLoader.addEventListener('change', (e) => loadImage(e.target.files[0]));
+    
+    // Drag and Drop
+    const uploadBox = document.querySelector('.hero-gradient');
+    uploadBox.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); uploadBox.classList.add('opacity-90'); });
+    uploadBox.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); uploadBox.classList.remove('opacity-90'); });
+    uploadBox.addEventListener('drop', (e) => { e.preventDefault(); e.stopPropagation(); uploadBox.classList.remove('opacity-90'); loadImage(e.dataTransfer.files[0]); });
+
+    undoBtn.addEventListener('click', undo);
+    redoBtn.addEventListener('click', redo);
+    autobgTool.addEventListener('click', () => activateTool('autobg'));
+    eraserTool.addEventListener('click', () => activateTool('eraser'));
+    restoreTool.addEventListener('click', () => activateTool('restore'));
+
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseleave', stopDrawing);
+    canvas.addEventListener('touchstart', startDrawing, {passive: false});
+    canvas.addEventListener('touchmove', draw, {passive: false});
+    canvas.addEventListener('touchend', stopDrawing);
+
+    downloadBtn.addEventListener('click', () => {
+        const link = document.createElement('a');
+        link.download = `fundomagico_${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
+});
+</script>
+
+</body>
+</html>
